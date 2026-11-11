@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Cotações</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+        th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+        .ok { background: #d4edda; padding: 10px; border-radius: 4px; }
+        .erro { background: #f8d7da; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Painel de Cotações</h1>
+
+    {% if sucesso %}
+        <div class="ok">
+            Cotação registrada:
+            <strong>{{ registro.moeda_origem }}/{{ registro.moeda_destino }} = R$ {{ registro.valor }}</strong>
+        </div>
+    {% elif erro %}
+        <div class="erro">{{ erro }}</div>
+    {% endif %}
+
+    <p><a href="{% url 'consultar' %}">Consultar novamente</a></p>
+
+    <h2>Histórico de consultas</h2>
+    <p id="status-historico">Carregando histórico...</p>
+    <table id="tabela-historico" hidden>
+        <thead>
+            <tr><th>Par</th><th>Valor</th><th>Data/Hora</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        const status = document.getElementById('status-historico');
+        const tabela = document.getElementById('tabela-historico');
+        const corpo = tabela.querySelector('tbody');
+
+        fetch('/api/historico/')
+            .then(function (resposta) {
+                if (!resposta.ok) {
+                    throw new Error('HTTP ' + resposta.status);
+                }
+                return resposta.json();
+            })
+            .then(function (registros) {
+                if (registros.length === 0) {
+                    status.textContent = 'Nenhuma consulta registrada ainda.';
+                    return;
+                }
+                registros.forEach(function (r) {
+                    const linha = document.createElement('tr');
+                    const dados = [
+                        r.moeda_origem + '/' + r.moeda_destino,
+                        'R$ ' + r.valor,
+                        new Date(r.data_hora_consulta).toLocaleString('pt-BR')
+                    ];
+                    dados.forEach(function (texto) {
+                        const celula = document.createElement('td');
+                        celula.textContent = texto; // textContent: nunca interpreta HTML
+                        linha.appendChild(celula);
+                    });
+                    corpo.appendChild(linha);
+                });
+                status.hidden = true;
+                tabela.hidden = false;
+            })
+            .catch(function (erro) {
+                status.textContent = 'Não foi possível carregar o histórico. Verifique sua conexão.';
+                console.error('Falha ao buscar histórico:', erro);
+            });
+    </script>
+</body>
+</html>
